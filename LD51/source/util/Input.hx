@@ -5,6 +5,13 @@ import flixel.FlxObject;
 import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.input.keyboard.FlxKey;
 
+enum InputSetup
+{
+	None;
+	TopDown;
+	Platformer;
+}
+
 /**
  * Input Manager for adding different key states
  * @author aeveis
@@ -25,6 +32,7 @@ class Input
 	public var lastPressed:Int = FlxObject.NONE;
 
 	public var existingKey:String = null;
+	public var inputSetup:InputSetup = InputSetup.None;
 
 	public var any(get, null):Bool;
 
@@ -47,11 +55,32 @@ class Input
 		return (pressed == FlxObject.NONE || pressed == FlxObject.DOWN || pressed == FlxObject.UP);
 	}
 
+	public var pressedBothX(get, null):Bool;
+
+	function get_pressedBothX()
+	{
+		return left.pressed && right.pressed;
+	}
+
+	public var pressedBothY(get, null):Bool;
+
+	function get_pressedBothY()
+	{
+		return up.pressed && down.pressed;
+	}
+
 	public var anyUpDown(get, null):Bool;
 
 	function get_anyUpDown()
 	{
-		return up.justPressed || down.justPressed;
+		return up.pressed || down.pressed;
+	}
+
+	public var anyLeftRight(get, null):Bool;
+
+	function get_anyLeftRight()
+	{
+		return left.pressed || right.pressed;
 	}
 
 	public var none(get, null):Bool;
@@ -80,11 +109,15 @@ class Input
 
 	public static function switchToGamepad()
 	{
+		if (switchToGamepadCallback == null)
+			return;
 		switchToGamepadCallback();
 	}
 
 	public static function switchToKeyboard()
 	{
+		if (switchToKeysCallback == null)
+			return;
 		switchToKeysCallback();
 	}
 
@@ -270,6 +303,7 @@ class Input
 
 	public function topdownSetup()
 	{
+		inputSetup = InputSetup.TopDown;
 		updateInput(left, ["LEFT", "A"], ["DPAD_LEFT"]);
 		updateInput(right, ["RIGHT", "D"], ["DPAD_RIGHT"]);
 		updateInput(up, ["UP", "W"], ["DPAD_UP"]);
@@ -283,9 +317,10 @@ class Input
 
 	public function platformerSetup()
 	{
+		inputSetup = InputSetup.Platformer;
 		updateInput(left, ["LEFT", "A"], ["DPAD_LEFT"]);
 		updateInput(right, ["RIGHT", "D"], ["DPAD_RIGHT"]);
-		updateInput(up, ["UP", "W", "SPACE"], ["DPAD_UP"]);
+		updateInput(up, ["UP", "W", "SPACE"], ["DPAD_UP", "X", "Y"]);
 		updateInput(down, ["DOWN", "S"], ["DPAD_DOWN"]);
 
 		addInput("select", ["X", "PERIOD", "SLASH"], ["A"]);
@@ -655,13 +690,16 @@ class Input
 						stickJustMovedY = true;
 					}
 				}
-				if (stickJustMovedY)
+				if (inputSetup != InputSetup.Platformer)
 				{
-					up.justPressed = true;
-				}
-				if (stickJustReleaseY)
-				{
-					up.justReleased = true;
+					if (stickJustMovedY)
+					{
+						up.justPressed = true;
+					}
+					if (stickJustReleaseY)
+					{
+						up.justReleased = true;
+					}
 				}
 			}
 

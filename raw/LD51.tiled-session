@@ -54,7 +54,7 @@
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
-        "height": 8,
-        "width": 8
+        "height": 16,
+        "width": 16
     }
 }

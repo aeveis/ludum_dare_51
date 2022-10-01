@@ -12,6 +12,7 @@ import flixel.math.FlxPoint;
 import flixel.tile.FlxTilemap;
 import global.G;
 import global.TextConstants;
+import objs.Player;
 import util.Input;
 import util.TiledLevel;
 import util.ui.UIContainer.UILayout;
@@ -25,6 +26,8 @@ class PlayState extends FlxState
 	public var tilemap:FlxTilemap;
 	public var fadeComplete:Bool = false;
 	public var followCam:FlxObject = null;
+
+	public var player:Player;
 
 	override public function create()
 	{
@@ -51,12 +54,12 @@ class PlayState extends FlxState
 		FlxG.camera.setScrollBoundsRect(tilemap.x, tilemap.y, level.fullWidth, level.fullHeight);
 
 		add(tilemap);
+		add(player);
 
-		/*followCam = new FlxObject();
-			followCam.x = player.x;
-			followCam.y = player.y;
-			FlxG.camera.follow(followCam, FlxCameraFollowStyle.PLATFORMER);
-		 */
+		followCam = new FlxObject();
+		followCam.x = player.x;
+		followCam.y = player.y;
+		FlxG.camera.follow(followCam, FlxCameraFollowStyle.PLATFORMER);
 
 		// FlxG.sound.playMusic("unrest", 0);
 
@@ -75,7 +78,7 @@ class PlayState extends FlxState
 		switch (pname)
 		{
 			case "player":
-			// player = new Player(px, py);
+				player = new Player(px, py);
 			default:
 				/*var obj:Object = new Object(px, py, pname);
 					obj.state = Object.NONE;
@@ -94,7 +97,8 @@ class PlayState extends FlxState
 	override public function update(elapsed:Float)
 	{
 		Input.control.update(elapsed);
-		super.update(elapsed);
+		if (!fadeComplete)
+			return;
 		if (!G.startInput)
 		{
 			if (Input.control.any || Input.control.keys.get("select").pressed)
@@ -114,10 +118,17 @@ class PlayState extends FlxState
 						textbox.skipTyping();
 					}
 			}*/
-			super.update(elapsed);
+			//super.update(elapsed);
 
 			return;
 		}
+
+		followCam.x = (followCam.x * 49 + player.followPoint.x) / 50;
+		followCam.y = player.followPoint.y;
+
+		FlxG.collide(tilemap, player);
+
+		super.update(elapsed);
 
 		if (Input.control.keys.get("restart").justPressed)
 		{
