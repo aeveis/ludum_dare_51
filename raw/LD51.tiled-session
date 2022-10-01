@@ -1,0 +1,60 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare50/LD50/assets/data/level0.tmx": {
+            "scale": 1.341875,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 280.204937121565,
+                "y": 318.2114578481602
+            }
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare50/LD50/assets/data/level0.tmx#creep": {
+            "scaleInDock": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare50/LD50/assets/data/level0.tmx#home": {
+            "scaleInDock": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare50/LD50/assets/data/level0.tmx#lizard": {
+            "scaleInDock": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare50/LD50/assets/data/level0.tmx#player": {
+            "scaleInDock": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare50/LD50/assets/data/level0.tmx#spike": {
+            "scaleInDock": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare50/LD50/assets/data/level0.tmx#tiles": {
+            "scaleInDock": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/level0.tmx": {
+            "scale": 0.75,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 640,
+                "y": 196
+            }
+        }
+    },
+    "last.imagePath": "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/images",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 8,
+    "map.tileWidth": 8,
+    "openFiles": [
+    ],
+    "project": "LD51.tiled-project",
+    "recentFiles": [
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 8,
+        "width": 8
+    }
+}
