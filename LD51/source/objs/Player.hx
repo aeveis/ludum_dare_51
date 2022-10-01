@@ -8,6 +8,7 @@ import flixel.group.FlxGroup;
 import flixel.math.FlxPoint;
 import flixel.system.FlxSound;
 import flixel.util.FlxColor;
+import flixel.util.FlxDirectionFlags;
 import global.G;
 import util.FSM;
 import util.Input;
@@ -22,6 +23,9 @@ enum MoveState
 	Flap;
 	Glide;
 	Land;
+	AirDash;
+	Crouch;
+	Stun;
 }
 
 class Player extends FlxSprite
@@ -41,6 +45,10 @@ class Player extends FlxSprite
 	public var idleDrag:Float = 600;
 	public var airDrag:Float = 150;
 	public var moveDrag:Float = 250;
+	public var airDashStrength:Float = 300;
+	public var airDashDiagonalStrength:Float;
+	public var maxDashVelocity = 400;
+	public var maxMoveVelocity = 120;
 
 	public var elapsed:Float = 0;
 	public var fsm:FSM;
@@ -49,6 +57,10 @@ class Player extends FlxSprite
 	public var onGround:TimedBool;
 	public var jumping:TimedBool;
 	public var jumpCooldown:TimedBool;
+	public var dashing:TimedBool;
+	public var dashCooldown:TimedBool;
+	public var delayedDash:Bool = false;
+	public var stunned:TimedBool;
 
 	public var followPoint:FlxPoint;
 	public var followOffset:Float = 3;
@@ -62,23 +74,30 @@ class Player extends FlxSprite
 		setFacingFlip(FlxObject.RIGHT, false, false);
 		setFacingFlip(FlxObject.LEFT, true, false);
 
-		maxVelocity.x = 120;
-		maxVelocity.y = 180;
-		drag.x = idleDrag;
-		drag.y = idleDrag;
+		maxVelocity.x = maxVelocity.y = maxMoveVelocity;
+		drag.x = drag.y = idleDrag;
 		acceleration.y = gravity;
 
 		onGround = new TimedBool(0.15);
 		jumping = new TimedBool(0.2);
 		jumpCooldown = new TimedBool(0.3);
+		dashing = new TimedBool(0.15);
+		dashCooldown = new TimedBool(0.2);
+		stunned = new TimedBool(0.5);
+		airDashDiagonalStrength = Math.sqrt(airDashStrength * airDashStrength / 2.0);
 
 		animation.add("idle", [0], 5, false);
-		animation.add("crouch", [5, 2], 12, false);
+		animation.add("crouch", [5], 12, false);
+		animation.add("land", [5, 2], 12, false);
 		animation.add("walk", [1, 2, 0], 10, true);
 		animation.add("jump", [5, 1, 3, 3, 6, 6], 15, false);
 		animation.add("flap", [3, 6], 7, false);
 		animation.add("fall", [3, 4], 6, false);
 		animation.add("glide", [8, 7, 8, 9], 6, true);
+		animation.add("airDash", [10, 13, 13, 13, 12, 11, 3], 50, false);
+		animation.add("airDashDiaUp", [10, 16, 16, 16, 15, 14, 3], 50, false);
+		animation.add("airDashDiaDown", [10, 19, 19, 19, 18, 17, 3], 50, false);
+		animation.add("stun", [20, 21, 20, 21], 8, false);
 		fsm = new FSM();
 
 		fsm.addState(MoveState.Idle, idleEnter, idleUpdate);
@@ -88,6 +107,9 @@ class Player extends FlxSprite
 		fsm.addState(MoveState.Flap, flapEnter, flapUpdate);
 		fsm.addState(MoveState.Glide, glideEnter, glideUpdate, glideLeave);
 		fsm.addState(MoveState.Land, landEnter, landUpdate);
+		fsm.addState(MoveState.AirDash, airDashEnter, airDashUpdate, airDashLeave);
+		fsm.addState(MoveState.Crouch, crouchEnter, crouchUpdate);
+		fsm.addState(MoveState.Stun, stunEnter, stunUpdate);
 		fsm.switchState(MoveState.Idle);
 
 		followPoint = FlxPoint.get();
@@ -108,10 +130,16 @@ class Player extends FlxSprite
 		// DustEmitter.instance.y = y + height / 2;
 		// DustEmitter.instance.constantPoof();
 
-		onGround.hard = isTouching(FlxObject.FLOOR);
-		onGround.update(elapsed);
+		dashCooldown.update(elapsed);
+		dashing.update(elapsed);
+		if (!dashCooldown.soft)
+		{
+			onGround.hard = isTouching(FlxObject.FLOOR);
+			onGround.update(elapsed);
+		}
 		jumping.update(elapsed);
 		jumpCooldown.update(elapsed);
+		stunned.update(elapsed);
 		fsm.update();
 		super.update(elapsed);
 
@@ -149,6 +177,15 @@ class Player extends FlxSprite
 		jumping.reset();
 		jumpCooldown.reset();
 		followOffset = 3;
+		animation.play("land");
+	}
+
+	private function crouchEnter()
+	{
+		drag.x = drag.y = moveDrag;
+		jumping.reset();
+		jumpCooldown.reset();
+		followOffset = 3;
 		animation.play("crouch");
 	}
 
@@ -168,6 +205,7 @@ class Player extends FlxSprite
 	{
 		drag.x = drag.y = airDrag;
 		followOffset = 2;
+		acceleration.y = gravity;
 	}
 
 	private function jumpEnter()
@@ -199,15 +237,149 @@ class Player extends FlxSprite
 		animation.stop();
 	}
 
+	private function stunEnter()
+	{
+		velocity.x = velocity.y = 0;
+		followOffset = 3;
+		stunned.trigger();
+		animation.play("stun");
+	}
+
+	private function airDashEnter()
+	{
+		drag.x = drag.y = airDrag;
+		followOffset = 2;
+		acceleration.y = 1;
+		maxVelocity.x = maxVelocity.y = maxDashVelocity;
+		angle = 0;
+		dashCooldown.trigger();
+		dashing.trigger();
+
+		/*trace("delayed left: " + Input.control.left.justPressedDelayed + " right: " + Input.control.right.justPressedDelayed + " up: "
+				+ Input.control.up.justPressedDelayed + " down: " + Input.control.down.justPressedDelayed);
+			trace("justpressed left: " + Input.control.left.justPressed + " right: " + Input.control.right.justPressed + " up: " + Input.control.up.justPressed
+				+ " down: " + Input.control.down.justPressed);
+			trace("pressed left: " + Input.control.left.pressed + " right: " + Input.control.right.pressed + " up: " + Input.control.up.pressed
+				+ " down: " + Input.control.down.pressed); */
+
+		delayedDash = !Input.control.anyJustPressed;
+
+		var diagonal:Bool = Input.control.anyLeftRight;
+		if (Input.control.left.justPressedDelayed)
+		{
+			facing = FlxObject.LEFT;
+		}
+		if (Input.control.right.justPressedDelayed)
+		{
+			facing = FlxObject.RIGHT;
+		}
+
+		if (Input.control.up.pressed || Input.control.up.justPressedDelayed)
+		{
+			if (facing == FlxObject.LEFT && diagonal)
+			{
+				velocity.x = -airDashDiagonalStrength;
+				velocity.y = -airDashDiagonalStrength;
+				animation.play("airDashDiaUp");
+				return;
+			}
+			if (facing == FlxObject.RIGHT && diagonal)
+			{
+				velocity.x = airDashDiagonalStrength;
+				velocity.y = -airDashDiagonalStrength;
+				animation.play("airDashDiaUp");
+				return;
+			}
+			if (facing == FlxObject.LEFT)
+			{
+				angle = 90;
+			}
+			else
+			{
+				angle = -90;
+			}
+			velocity.x = 0;
+			velocity.y = -airDashStrength;
+			animation.play("airDash");
+			return;
+		}
+		if (Input.control.down.pressed || Input.control.down.justPressedDelayed)
+		{
+			if (facing == FlxObject.LEFT && diagonal)
+			{
+				velocity.x = -airDashDiagonalStrength;
+				velocity.y = airDashDiagonalStrength;
+				animation.play("airDashDiaDown");
+				return;
+			}
+			if (facing == FlxObject.RIGHT && diagonal)
+			{
+				velocity.x = airDashDiagonalStrength;
+				velocity.y = airDashDiagonalStrength;
+				animation.play("airDashDiaDown");
+				return;
+			}
+
+			if (facing == FlxObject.LEFT)
+			{
+				angle = -90;
+			}
+			else
+			{
+				angle = 90;
+			}
+			velocity.x = 0;
+			velocity.y = airDashStrength;
+			animation.play("airDash");
+			return;
+		}
+		if (facing == FlxObject.LEFT)
+		{
+			velocity.x = -airDashStrength;
+			velocity.y = 0;
+			animation.play("airDash");
+			return;
+		}
+		if (facing == FlxObject.RIGHT)
+		{
+			velocity.x = airDashStrength;
+			velocity.y = 0;
+			animation.play("airDash");
+			return;
+		}
+	}
+
+	private function airDashLeave()
+	{
+		acceleration.y = gravity;
+		maxVelocity.x = maxVelocity.y = maxMoveVelocity;
+		angle = 0;
+	}
+
 	private function idleUpdate()
 	{
 		if (Input.control.pressedBothX || Input.control.pressedBothY)
 		{
 			return;
 		}
-
+		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		{
+			if (onGround.soft && Input.control.down.pressed)
+			{
+				fsm.switchState(MoveState.Crouch);
+				return;
+			}
+			fsm.switchState(MoveState.AirDash);
+			onGround.hard = false;
+			return;
+		}
 		if (onGround.soft)
 		{
+			if (Input.control.down.justPressed)
+			{
+				fsm.switchState(MoveState.Crouch);
+				return;
+			}
 			if (Input.control.anyLeftRight)
 			{
 				fsm.switchState(MoveState.Walk);
@@ -222,11 +394,71 @@ class Player extends FlxSprite
 		fsm.switchState(MoveState.Fall);
 	}
 
+	private function crouchUpdate()
+	{
+		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		{
+			if (onGround.soft && Input.control.down.pressed)
+			{
+				fsm.switchState(MoveState.Crouch);
+				return;
+			}
+			fsm.switchState(MoveState.AirDash);
+			onGround.hard = false;
+			return;
+		}
+		if (Input.control.pressedBothX || Input.control.pressedBothY)
+		{
+			return;
+		}
+		else if (Input.control.left.pressed)
+		{
+			facing = FlxObject.LEFT;
+		}
+		else if (Input.control.right.pressed)
+		{
+			facing = FlxObject.RIGHT;
+		}
+
+		if (onGround.soft)
+		{
+			if (!Input.control.down.pressed)
+			{
+				fsm.switchState(MoveState.Idle);
+				return;
+			}
+			if (Input.control.up.justPressed)
+			{
+				fsm.switchState(MoveState.Jump);
+				return;
+			}
+			return;
+		}
+
+		fsm.switchState(MoveState.Fall);
+	}
+
 	private function walkUpdate()
 	{
+		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		{
+			if (onGround.soft && Input.control.down.pressed)
+			{
+				fsm.switchState(MoveState.Crouch);
+				return;
+			}
+			fsm.switchState(MoveState.AirDash);
+			onGround.hard = false;
+			return;
+		}
 		if (onGround.soft)
 		{
 			move(moveSpeed);
+			if (Input.control.down.justPressed)
+			{
+				fsm.switchState(MoveState.Crouch);
+				return;
+			}
 			if (Input.control.up.justPressed)
 			{
 				fsm.switchState(MoveState.Jump);
@@ -249,11 +481,15 @@ class Player extends FlxSprite
 			return;
 		}
 
-		if (Input.control.up.justPressed && !jumpCooldown.soft)
+		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		{
+			fsm.switchState(MoveState.AirDash);
+		}
+		else if (Input.control.up.justPressed && !jumpCooldown.soft)
 		{
 			fsm.switchState(MoveState.Flap);
 		}
-		else if (Input.control.up.pressed)
+		else if (Input.control.up.pressed || Input.control.keys.get("select").pressed)
 		{
 			fsm.switchState(MoveState.Glide);
 		}
@@ -269,6 +505,11 @@ class Player extends FlxSprite
 		move(moveSpeed);
 		if (onGround.soft)
 		{
+			if (Input.control.down.pressed)
+			{
+				fsm.switchState(MoveState.Crouch);
+				return;
+			}
 			if (Input.control.up.justPressed)
 			{
 				fsm.switchState(MoveState.Jump);
@@ -283,6 +524,12 @@ class Player extends FlxSprite
 
 	private function jumpUpdate()
 	{
+		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		{
+			fsm.switchState(MoveState.AirDash);
+			onGround.hard = false;
+			return;
+		}
 		if (onGround.hard)
 		{
 			fsm.switchState(MoveState.Land);
@@ -295,7 +542,7 @@ class Player extends FlxSprite
 				fsm.switchState(MoveState.Flap);
 				return;
 			}
-			else if (Input.control.up.pressed)
+			else if (Input.control.up.pressed || Input.control.keys.get("select").pressed)
 			{
 				fsm.switchState(MoveState.Glide);
 				return;
@@ -309,19 +556,29 @@ class Player extends FlxSprite
 
 	private function flapUpdate()
 	{
-		if (onGround.soft)
+		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		{
+			fsm.switchState(MoveState.AirDash);
+			onGround.hard = false;
+			return;
+		}
+		if (onGround.hard)
 		{
 			fsm.switchState(MoveState.Land);
 			return;
 		}
 		if (!jumping.soft)
 		{
-			if (Input.control.up.justPressed && !jumpCooldown.soft)
+			if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+			{
+				fsm.switchState(MoveState.AirDash);
+			}
+			else if (Input.control.up.justPressed && !jumpCooldown.soft)
 			{
 				fsm.switchState(MoveState.Flap);
 				return;
 			}
-			else if (Input.control.up.pressed)
+			else if (Input.control.up.pressed || Input.control.keys.get("select").pressed)
 			{
 				fsm.switchState(MoveState.Glide);
 				return;
@@ -334,17 +591,21 @@ class Player extends FlxSprite
 
 	private function glideUpdate()
 	{
-		if (onGround.soft)
+		if (onGround.hard)
 		{
 			fsm.switchState(MoveState.Land);
 			return;
 		}
-		if (Input.control.up.justPressed && !jumpCooldown.soft)
+		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		{
+			fsm.switchState(MoveState.AirDash);
+		}
+		else if (Input.control.up.justPressed && !jumpCooldown.soft)
 		{
 			fsm.switchState(MoveState.Flap);
 			return;
 		}
-		if (!Input.control.up.pressed)
+		if (!Input.control.up.pressed && !Input.control.keys.get("select").pressed)
 		{
 			fsm.switchState(MoveState.Fall);
 			return;
@@ -354,6 +615,55 @@ class Player extends FlxSprite
 			animation.play("glide");
 		}
 		move(airMoveSpeed);
+	}
+
+	private function airDashUpdate()
+	{
+		if (onGround.hard)
+		{
+			fsm.switchState(MoveState.Land);
+			return;
+		}
+
+		if (isTouching(FlxObject.WALL | FlxObject.CEILING))
+		{
+			fsm.switchState(MoveState.Stun);
+			return;
+		}
+
+		if (Input.control.anyJustPressed && Input.control.keys.get("select").justPressedDelayed)
+		{
+			fsm.switchState(MoveState.AirDash);
+		}
+		if (isTouching(FlxObject.FLOOR) && velocity.y > 10.0)
+		{
+			animation.stop();
+			onGround.hard = true;
+			fsm.switchState(MoveState.Land);
+			return;
+		}
+		if (!dashing.soft && animation.finished)
+		{
+			if (Input.control.keys.get("select").pressed)
+			{
+				fsm.switchState(MoveState.Glide);
+				return;
+			}
+			fsm.switchState(MoveState.Fall);
+		}
+	}
+
+	private function stunUpdate()
+	{
+		if (!stunned.soft)
+		{
+			if (onGround.hard)
+			{
+				fsm.switchState(MoveState.Land);
+				return;
+			}
+			fsm.switchState(MoveState.Fall);
+		}
 	}
 
 	private function move(p_move_speed:Float)
@@ -374,15 +684,11 @@ class Player extends FlxSprite
 		{
 			velocity.x -= elapsed * p_move_speed;
 			facing = FlxObject.LEFT;
-			setFacingFlip(FlxObject.DOWN, true, false);
-			setFacingFlip(FlxObject.UP, true, false);
 		}
 		else if (Input.control.right.pressed)
 		{
 			velocity.x += elapsed * p_move_speed;
 			facing = FlxObject.RIGHT;
-			setFacingFlip(FlxObject.DOWN, false, false);
-			setFacingFlip(FlxObject.UP, false, false);
 		}
 	}
 

@@ -690,16 +690,13 @@ class Input
 						stickJustMovedY = true;
 					}
 				}
-				if (inputSetup != InputSetup.Platformer)
+				if (stickJustMovedY)
 				{
-					if (stickJustMovedY)
-					{
-						up.justPressed = true;
-					}
-					if (stickJustReleaseY)
-					{
-						up.justReleased = true;
-					}
+					up.justPressed = true;
+				}
+				if (stickJustReleaseY)
+				{
+					up.justReleased = true;
 				}
 			}
 

@@ -4,7 +4,8 @@
     ],
     "extensionsPath": "extensions",
     "folders": [
-        "."
+        ".",
+        "../LD51/assets/data"
     ],
     "propertyTypes": [
     ]

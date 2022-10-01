@@ -15,8 +15,10 @@ import global.TextConstants;
 import objs.Player;
 import util.Input;
 import util.TiledLevel;
+import util.ui.UIBitmapText;
 import util.ui.UIContainer.UILayout;
 import util.ui.UIContainer.UIPlacement;
+import util.ui.UIContainer;
 
 class PlayState extends FlxState
 {
@@ -28,6 +30,9 @@ class PlayState extends FlxState
 	public var followCam:FlxObject = null;
 
 	public var player:Player;
+	public var ui:UIContainer;
+	public var timerText:UIBitmapText;
+	public var timer:Float = 0;
 
 	override public function create()
 	{
@@ -40,13 +45,20 @@ class PlayState extends FlxState
 		Input.control = new Input();
 		Input.control.platformerSetup();
 
+		ui = new UIContainer();
+		ui.scrollFactor.set(0, 0);
+		timerText = new UIBitmapText("00");
+		ui.add(timerText);
+		timerText.setPlacement(UIPlacement.CenterXTop);
+		timerText.setPadding(UILayout.top(4), true);
+
 		level = new TiledLevel(AssetPaths.level0__tmx);
 		tilemap = level.loadTileMap("tiles", "tiles");
-		for (i in 0...1)
+		for (i in 0...2)
 		{
 			tilemap.setTileProperties(i, FlxObject.NONE);
 		}
-		for (i in 1...15)
+		for (i in 2...15)
 		{
 			tilemap.setTileProperties(i, FlxObject.ANY);
 		}
@@ -55,6 +67,7 @@ class PlayState extends FlxState
 
 		add(tilemap);
 		add(player);
+		add(ui);
 
 		followCam = new FlxObject();
 		followCam.x = player.x;
@@ -118,17 +131,21 @@ class PlayState extends FlxState
 						textbox.skipTyping();
 					}
 			}*/
-			//super.update(elapsed);
+			// super.update(elapsed);
 
 			return;
 		}
 
-		followCam.x = (followCam.x * 49 + player.followPoint.x) / 50;
+		followCam.x = (followCam.x * 9 + player.followPoint.x) / 10;
 		followCam.y = player.followPoint.y;
 
 		FlxG.collide(tilemap, player);
 
 		super.update(elapsed);
+
+
+		timer+=elapsed;
+		timerText.text = "0" + Math.floor(timer)%10;
 
 		if (Input.control.keys.get("restart").justPressed)
 		{
