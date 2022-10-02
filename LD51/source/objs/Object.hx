@@ -78,7 +78,7 @@ class Object extends FlxSprite
 				timer += elapsed * sineSpeed;
 				y = startY + sineAmount * Math.sin(timer);
 			case RISEFADE:
-				y -= elapsed * 10;
+				y -= elapsed * 30;
 				alpha -= elapsed * 5;
 				if (alpha <= 0)
 				{

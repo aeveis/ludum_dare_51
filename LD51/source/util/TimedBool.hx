@@ -42,4 +42,9 @@ class TimedBool
 	{
 		delay_timer = 0;
 	}
+
+	public function setDelay(p_delay:Float)
+	{
+		delay = p_delay;
+	}
 }

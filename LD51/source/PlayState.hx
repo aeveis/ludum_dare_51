@@ -9,14 +9,17 @@ import flixel.addons.editors.tiled.TiledObject;
 import flixel.group.FlxGroup.FlxTypedGroup;
 import flixel.group.FlxGroup;
 import flixel.math.FlxPoint;
+import flixel.system.debug.interaction.tools.Eraser;
 import flixel.text.FlxText.FlxTextAlign;
 import flixel.tile.FlxTilemap;
 import flixel.util.FlxColor;
 import global.G;
 import global.TextConstants;
 import objs.Checkpoint;
+import objs.DustEmitter;
 import objs.Feather;
 import objs.Object;
+import objs.Platform;
 import objs.Player;
 import util.Input;
 import util.TiledLevel;
@@ -42,19 +45,24 @@ class PlayState extends FlxState
 	public var scoreUI:UIContainer;
 	public var scoreText:UIBitmapText;
 	public var dashUI:UIContainer;
+	public var featherIcon:Feather;
 	public var dashText:UIBitmapText;
+	public var controlText:UIBitmapText;
 	public var checkpoints:FlxTypedGroup<Checkpoint>;
 	public var checkpointMap:Map<Int, Checkpoint>;
 	public var feathers:FlxTypedGroup<Feather>;
 	public var feathersMap:Map<Int, Array<Feather>>;
+	public var platforms:FlxTypedGroup<Platform>;
+	public var dustEmit:DustEmitter;
 
 	public var timer:Float = 0;
 	public var counting:Bool = false;
 
 	public var onCheckpoint:Bool = false;
 	public var raceStarted:Bool = false;
-
-	private var debugTeleLevel = -1;
+	public var goldLevel:Int;
+	public var untetheredLevel:Int;
+	public var totalTime:Float = 0;
 
 	override public function create()
 	{
@@ -62,7 +70,7 @@ class PlayState extends FlxState
 		instance = this;
 		cameras = [camera];
 		FlxG.mouse.useSystemCursor = true;
-		FlxG.camera.bgColor = 0xffffff;
+		FlxG.camera.bgColor = 0xf9dca1;
 		FlxG.camera.pixelPerfectRender = true;
 		Input.control = new Input();
 		Input.control.platformerSetup();
@@ -71,6 +79,8 @@ class PlayState extends FlxState
 		checkpointMap = new Map<Int, Checkpoint>();
 		feathers = new FlxTypedGroup<Feather>();
 		feathersMap = new Map<Int, Array<Feather>>();
+		platforms = new FlxTypedGroup<Platform>();
+		dustEmit = new DustEmitter();
 
 		ui = new UIContainer(UIPlacement.Top, UISize.XFill(20));
 		ui.scrollFactor.set(0, 0);
@@ -98,8 +108,15 @@ class PlayState extends FlxState
 		dashText = new UIBitmapText("0");
 		dashText.setPadding(UILayout.horivert(2, 3));
 		dashText.setSizeToText();
+		featherIcon = new Feather(0, 0, Feather.NORMAL);
+		featherIcon.state = Object.NONE;
+		controlText = new UIBitmapText("");
+		controlText.setColor(0x56ddd7);
+		controlText.setPadding(UILayout.horivert(2, 3));
+		controlText.setSizeToText();
 		dashUI.add(dashText);
-		dashUI.add(new FlxSprite(0, 0, AssetPaths.dashFeather__png));
+		dashUI.add(featherIcon);
+		dashUI.add(controlText);
 		ui.add(dashUI);
 
 		level = new TiledLevel(AssetPaths.level0__tmx);
@@ -115,16 +132,21 @@ class PlayState extends FlxState
 		level.loadObjects("entities", loadObj);
 		FlxG.camera.setScrollBoundsRect(tilemap.x, tilemap.y, level.fullWidth, level.fullHeight);
 
+		var bg = new FlxSprite(0, 0, AssetPaths.bg__png);
+		bg.scrollFactor.set(0.2, 0.2);
+		add(bg);
 		add(tilemap);
+		add(platforms);
 		add(checkpoints);
 		add(feathers);
+		add(dustEmit);
 		add(player);
 		add(ui);
 
-		followCam = new FlxObject();
-		followCam.x = player.x;
-		followCam.y = player.y;
-		FlxG.camera.follow(followCam, FlxCameraFollowStyle.PLATFORMER);
+		/*followCam = new FlxObject();
+			followCam.x = player.x;
+			followCam.y = player.y; */
+		FlxG.camera.follow(player, FlxCameraFollowStyle.PLATFORMER);
 
 		// FlxG.sound.playMusic("unrest", 0);
 
@@ -132,13 +154,13 @@ class PlayState extends FlxState
 		{
 			// FlxG.sound.music.pause();
 		}
-		G.level = 0;
+		G.level = -1;
 		G.score = 0;
 		G.maxLevel = G.maxScore = checkpoints.members.length;
 		scoreText.text = G.score + "/" + G.maxScore;
 		scoreText.setSizeToText();
 		scoreUI.refreshChildren();
-		fade(0.3, true, fadeOnComplete);
+		fade(0.3, true, fadeOnComplete, 0xf9dca1);
 	}
 
 	public function loadObj(pobj:TiledObject, px:Float, py:Float)
@@ -156,6 +178,7 @@ class PlayState extends FlxState
 					trace("checkpoint's level not set");
 				}
 				var checkpoint:Checkpoint = new Checkpoint(px, py);
+				checkpoint.level = level;
 				checkpointMap.set(level, checkpoint);
 				checkpoints.add(checkpoint);
 			case "feather":
@@ -164,7 +187,19 @@ class PlayState extends FlxState
 				{
 					trace("checkpoint's level not set");
 				}
-				var feather:Feather = new Feather(px, py);
+				var type:String = pobj.properties.contains("type") ? pobj.properties.get("type") : "normal";
+				var fstate:Int = Feather.NORMAL;
+				switch (type)
+				{
+					case "gold":
+						fstate = Feather.GOLD;
+						goldLevel = level;
+					case "untethered":
+						fstate = Feather.UNTETHERED;
+						untetheredLevel = level;
+					default:
+				}
+				var feather:Feather = new Feather(px, py, fstate);
 				var array:Array<Feather> = feathersMap.get(level);
 				if (array == null)
 				{
@@ -173,6 +208,8 @@ class PlayState extends FlxState
 				array.push(feather);
 				feathersMap.set(level, array);
 				feathers.add(feather);
+			case "platform":
+				platforms.add(new Platform(px, py));
 			default:
 				/*var obj:Object = new Object(px, py, pname);
 					obj.state = Object.NONE;
@@ -217,10 +254,11 @@ class PlayState extends FlxState
 			return;
 		}
 
-		followCam.x = (followCam.x * 9 + player.followPoint.x) / 10;
-		followCam.y = player.followPoint.y;
+		// followCam.x = (followCam.x * 9 + player.followPoint.x) / 10;
+		// followCam.y = player.followPoint.y;
 
 		FlxG.collide(tilemap, player);
+		FlxG.collide(platforms, player, checkPlatform);
 		onCheckpoint = FlxG.overlap(checkpoints, player, reachCheckpoint);
 		if (!onCheckpoint && raceStarted)
 		{
@@ -251,25 +289,39 @@ class PlayState extends FlxState
 
 		if (FlxG.keys.justPressed.RBRACKET)
 		{
-			debugTeleLevel = (debugTeleLevel + 1) % (G.maxLevel + 1);
-			setToLevel(debugTeleLevel);
+			G.level++;
+			setToLevel(cast Math.min(G.maxLevel, G.level));
 		}
 		if (FlxG.keys.justPressed.LBRACKET)
 		{
-			debugTeleLevel = cast Math.max(0, debugTeleLevel - 1);
-			setToLevel(debugTeleLevel);
+			G.level--;
+			setToLevel(cast Math.max(0, G.level));
 		}
 		if (Input.control.keys.get("restart").justPressed)
 		{
 			if (G.level <= G.maxLevel)
 			{
-				debugTeleLevel = (G.level - 1) % (G.maxLevel + 1);
-				setToLevel(debugTeleLevel);
+				setToLevel(G.level);
 			}
 			else
 			{
 				restart();
 			}
+		}
+		if (Input.control.keys.get("restart").justPressed && FlxG.keys.pressed.SHIFT)
+		{
+			restart();
+		}
+	}
+
+	public function checkPlatform(pf:Platform, p:Player)
+	{
+		if (player.dashing.soft && player.dashUntethered)
+		{
+			pf.breakPlatform();
+			dustEmit.x = pf.x;
+			dustEmit.y = pf.y;
+			dustEmit.cloudPoof();
 		}
 	}
 
@@ -278,9 +330,25 @@ class PlayState extends FlxState
 		var checkpoint:Checkpoint = checkpointMap.get(level);
 		if (checkpoint == null)
 			return;
+		// followCam.x = player.followPoint.x = player.x = checkpoint.x;
+		// followCam.y = player.followPoint.y = player.y = checkpoint.y - 1;
 		player.x = checkpoint.x;
 		player.y = checkpoint.y - 1;
-		G.level = level + 1;
+
+		player.dashCount = 0;
+		if (level > untetheredLevel)
+		{
+			setFeatherState(Feather.UNTETHERED);
+		}
+		else if (level > goldLevel)
+		{
+			setFeatherState(Feather.GOLD);
+		}
+		else
+		{
+			setFeatherState(Feather.NORMAL);
+		}
+		player.update(FlxG.elapsed);
 
 		timer = 0;
 
@@ -317,7 +385,7 @@ class PlayState extends FlxState
 		if (cp.state == Checkpoint.IDLE)
 		{
 			raceStarted = true;
-			if (timer > 10)
+			if (timer >= 10.1)
 			{
 				cp.switchState(Checkpoint.FAIL);
 			}
@@ -328,16 +396,16 @@ class PlayState extends FlxState
 				scoreText.text = G.score + "/" + G.maxScore;
 				scoreText.setSizeToText();
 				scoreUI.refreshChildren();
+				timerText.setColor(0x59c316);
+				totalTime += timer;
 			}
-			G.level++;
+			G.level = cp.level;
 			timer = 0;
-			timerText.setColor(0x59c316);
 		}
 		if (checkpointText.text != "Safe Zone")
 		{
 			checkpointText.text = "Safe Zone";
 			checkpointText.setSizeToText();
-			timerText.setColor(0x59c316);
 			timerUI.refreshChildren();
 			counting = false;
 		}
@@ -348,8 +416,49 @@ class PlayState extends FlxState
 		if (f.state == Object.BOUNCE)
 		{
 			f.collect();
-			player.dashCount++;
-			updateDashCount();
+			switch (f.featherState)
+			{
+				case Feather.GOLD:
+					player.dashLimited = false;
+					featherIcon.setFeatherState(f.featherState);
+					dashText.text = "#";
+					dashText.setSizeToText();
+					dashUI.refreshChildren();
+				case Feather.UNTETHERED:
+					player.dashLimited = false;
+					player.dashUntethered = true;
+					featherIcon.setFeatherState(f.featherState);
+					dashText.text = "??";
+					dashText.setSizeToText();
+					dashUI.refreshChildren();
+				default:
+					player.dashCount++;
+					updateDashCount();
+			}
+		}
+	}
+
+	public function setFeatherState(featherState:Int)
+	{
+		featherIcon.setFeatherState(featherState);
+		switch (featherState)
+		{
+			case Feather.GOLD:
+				player.dashLimited = false;
+				player.dashUntethered = false;
+				dashText.text = "#";
+				dashText.setSizeToText();
+				dashUI.refreshChildren();
+			case Feather.UNTETHERED:
+				player.dashLimited = false;
+				player.dashUntethered = true;
+				dashText.text = "??";
+				dashText.setSizeToText();
+				dashUI.refreshChildren();
+			default:
+				player.dashLimited = true;
+				player.dashUntethered = false;
+				updateDashCount();
 		}
 	}
 
@@ -357,6 +466,15 @@ class PlayState extends FlxState
 	{
 		dashText.text = player.dashCount + "";
 		dashText.setSizeToText();
+		if (player.dashCount > 0)
+		{
+			controlText.text = "[X]";
+		}
+		else
+		{
+			controlText.text = "";
+		}
+		controlText.setSizeToText();
 		dashUI.refreshChildren();
 	}
 

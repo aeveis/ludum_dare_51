@@ -14,6 +14,7 @@ class Checkpoint extends FlxSprite
 	public static inline var FAIL:Int = 2;
 
 	public var state:Int = IDLE;
+	public var level:Int = -1;
 
 	public function new(px:Float, py:Float)
 	{

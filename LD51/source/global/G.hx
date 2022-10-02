@@ -13,7 +13,7 @@ class G
 {
 	public static var score:Int = 0;
 	public static var maxScore:Int = 0;
-	public static var level:Int = 0;
+	public static var level:Int = -1;
 	public static var maxLevel:Int = 0;
 
 	public static function nextLevel()

@@ -34,7 +34,7 @@ class Player extends FlxSprite
 
 	public var moveSpeed:Float = 380;
 	public var groundBoost:Float = 60;
-	public var airMoveSpeed:Float = 300;
+	public var airMoveSpeed:Float = 250;
 	public var airBoost:Float = 50;
 	public var jumpStrength:Float = 120;
 	public var jumpVariable:Float = 5;
@@ -63,7 +63,10 @@ class Player extends FlxSprite
 	public var stunned:TimedBool;
 
 	public var dashLimited:Bool = true;
+	public var dashUntethered:Bool = true;
 	public var dashCount:Int = 0;
+	public var normalDashTime:Float = 0.15;
+	public var untetheredDashTime:Float = 0.2;
 
 	public var followPoint:FlxPoint;
 	public var followOffset:Float = 3;
@@ -89,9 +92,9 @@ class Player extends FlxSprite
 		onGround = new TimedBool(0.15);
 		jumping = new TimedBool(0.2);
 		jumpCooldown = new TimedBool(0.3);
-		dashing = new TimedBool(0.15);
+		dashing = new TimedBool(normalDashTime);
 		dashCooldown = new TimedBool(0.2);
-		stunned = new TimedBool(0.5);
+		stunned = new TimedBool(0.25);
 		airDashDiagonalStrength = Math.sqrt(airDashStrength * airDashStrength / 2.0);
 
 		animation.add("idle", [0], 5, false);
@@ -120,8 +123,8 @@ class Player extends FlxSprite
 		fsm.addState(MoveState.Stun, stunEnter, stunUpdate);
 		fsm.switchState(MoveState.Idle);
 
-		followPoint = FlxPoint.get();
-		followPoint.set(x, y);
+		// followPoint = FlxPoint.get();
+		// followPoint.set(x, y);
 		instance = this;
 	}
 
@@ -151,24 +154,24 @@ class Player extends FlxSprite
 		fsm.update();
 		super.update(elapsed);
 
-		switch (facing)
-		{
-			case FlxObject.LEFT:
-				followPoint.x -= elapsed * moveSpeed;
-				if (followPoint.x < x - FlxG.height / followOffset)
-				{
-					followPoint.x = x - FlxG.height / followOffset;
-				}
-				followPoint.y = y;
-			case FlxObject.RIGHT:
-				followPoint.x += elapsed * moveSpeed;
-				if (followPoint.x > x + FlxG.height / followOffset)
-				{
-					followPoint.x = x + FlxG.height / followOffset;
-				}
-				followPoint.y = y;
-			default:
-		}
+		/*switch (facing)
+			{
+				case FlxObject.LEFT:
+					followPoint.x -= elapsed * moveSpeed;
+					if (followPoint.x < x - FlxG.height / followOffset)
+					{
+						followPoint.x = x - FlxG.height / followOffset;
+					}
+					followPoint.y = y;
+				case FlxObject.RIGHT:
+					followPoint.x += elapsed * moveSpeed;
+					if (followPoint.x > x + FlxG.height / followOffset)
+					{
+						followPoint.x = x + FlxG.height / followOffset;
+					}
+					followPoint.y = y;
+				default:
+		}*/
 	}
 
 	private function idleEnter()
@@ -372,11 +375,11 @@ class Player extends FlxSprite
 		}
 		if (canDash())
 		{
-			if (onGround.soft && Input.control.down.pressed)
-			{
-				fsm.switchState(MoveState.Crouch);
-				return;
-			}
+			/*if (onGround.soft && Input.control.down.pressed)
+				{
+					fsm.switchState(MoveState.Crouch);
+					return;
+			}*/
 			fsm.switchState(MoveState.AirDash);
 			onGround.hard = false;
 			return;
@@ -406,11 +409,11 @@ class Player extends FlxSprite
 	{
 		if (canDash())
 		{
-			if (onGround.soft && Input.control.down.pressed)
-			{
-				fsm.switchState(MoveState.Crouch);
-				return;
-			}
+			/*if (onGround.soft && Input.control.down.pressed)
+				{
+					fsm.switchState(MoveState.Crouch);
+					return;
+			}*/
 			fsm.switchState(MoveState.AirDash);
 			onGround.hard = false;
 			return;
@@ -450,11 +453,11 @@ class Player extends FlxSprite
 	{
 		if (canDash())
 		{
-			if (onGround.soft && Input.control.down.pressed)
-			{
-				fsm.switchState(MoveState.Crouch);
-				return;
-			}
+			/*if (onGround.soft && Input.control.down.pressed)
+				{
+					fsm.switchState(MoveState.Crouch);
+					return;
+			}*/
 			fsm.switchState(MoveState.AirDash);
 			onGround.hard = false;
 			return;
@@ -510,6 +513,12 @@ class Player extends FlxSprite
 
 	private function landUpdate()
 	{
+		if (canDash())
+		{
+			fsm.switchState(MoveState.AirDash);
+			onGround.hard = false;
+			return;
+		}
 		move(moveSpeed);
 		if (onGround.soft)
 		{
@@ -633,16 +642,17 @@ class Player extends FlxSprite
 			return;
 		}
 
-		if (isTouching(FlxObject.WALL | FlxObject.CEILING))
+		if (!dashUntethered && isTouching(FlxObject.WALL | FlxObject.CEILING))
 		{
 			fsm.switchState(MoveState.Stun);
 			return;
 		}
 
-		if (Input.control.anyJustPressed && Input.control.keys.get("select").justPressedDelayed)
+		if (Input.control.anyJustPressed && (Input.control.keys.get("select").justPressedDelayed || dashUntethered))
 		{
 			fsm.switchState(MoveState.AirDash);
 		}
+
 		if (isTouching(FlxObject.FLOOR) && velocity.y > 10.0)
 		{
 			animation.stop();
@@ -676,6 +686,15 @@ class Player extends FlxSprite
 
 	private function canDash()
 	{
+		if (dashUntethered)
+		{
+			dashing.setDelay(untetheredDashTime);
+		}
+		else
+		{
+			dashing.setDelay(normalDashTime);
+		}
+
 		var attemptDash:Bool = (Input.control.keys.get("select").justPressed && !dashCooldown.soft);
 		if (attemptDash && dashLimited)
 		{
