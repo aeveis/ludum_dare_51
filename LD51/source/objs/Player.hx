@@ -32,9 +32,9 @@ class Player extends FlxSprite
 {
 	public static var instance:Player;
 
-	public var moveSpeed:Float = 350;
+	public var moveSpeed:Float = 380;
 	public var groundBoost:Float = 60;
-	public var airMoveSpeed:Float = 200;
+	public var airMoveSpeed:Float = 300;
 	public var airBoost:Float = 50;
 	public var jumpStrength:Float = 120;
 	public var jumpVariable:Float = 5;
@@ -62,17 +62,25 @@ class Player extends FlxSprite
 	public var delayedDash:Bool = false;
 	public var stunned:TimedBool;
 
+	public var dashLimited:Bool = true;
+	public var dashCount:Int = 0;
+
 	public var followPoint:FlxPoint;
 	public var followOffset:Float = 3;
 
 	public function new(px:Float, py:Float)
 	{
-		super(px, py);
+		super(px, py + 4);
 
 		loadGraphic(AssetPaths.skyjay__png, true, 16, 16);
 
+		width = height = 12;
+		centerOffsets();
+		offset.y += 2;
+
 		setFacingFlip(FlxObject.RIGHT, false, false);
 		setFacingFlip(FlxObject.LEFT, true, false);
+		facing = FlxObject.LEFT;
 
 		maxVelocity.x = maxVelocity.y = maxMoveVelocity;
 		drag.x = drag.y = idleDrag;
@@ -362,7 +370,7 @@ class Player extends FlxSprite
 		{
 			return;
 		}
-		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		if (canDash())
 		{
 			if (onGround.soft && Input.control.down.pressed)
 			{
@@ -396,7 +404,7 @@ class Player extends FlxSprite
 
 	private function crouchUpdate()
 	{
-		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		if (canDash())
 		{
 			if (onGround.soft && Input.control.down.pressed)
 			{
@@ -440,7 +448,7 @@ class Player extends FlxSprite
 
 	private function walkUpdate()
 	{
-		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		if (canDash())
 		{
 			if (onGround.soft && Input.control.down.pressed)
 			{
@@ -481,7 +489,7 @@ class Player extends FlxSprite
 			return;
 		}
 
-		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		if (canDash())
 		{
 			fsm.switchState(MoveState.AirDash);
 		}
@@ -524,7 +532,7 @@ class Player extends FlxSprite
 
 	private function jumpUpdate()
 	{
-		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		if (canDash())
 		{
 			fsm.switchState(MoveState.AirDash);
 			onGround.hard = false;
@@ -556,7 +564,7 @@ class Player extends FlxSprite
 
 	private function flapUpdate()
 	{
-		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		if (canDash())
 		{
 			fsm.switchState(MoveState.AirDash);
 			onGround.hard = false;
@@ -569,7 +577,7 @@ class Player extends FlxSprite
 		}
 		if (!jumping.soft)
 		{
-			if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+			if (canDash())
 			{
 				fsm.switchState(MoveState.AirDash);
 			}
@@ -596,7 +604,7 @@ class Player extends FlxSprite
 			fsm.switchState(MoveState.Land);
 			return;
 		}
-		if (Input.control.keys.get("select").justPressed && !dashCooldown.soft)
+		if (canDash())
 		{
 			fsm.switchState(MoveState.AirDash);
 		}
@@ -664,6 +672,20 @@ class Player extends FlxSprite
 			}
 			fsm.switchState(MoveState.Fall);
 		}
+	}
+
+	private function canDash()
+	{
+		var attemptDash:Bool = (Input.control.keys.get("select").justPressed && !dashCooldown.soft);
+		if (attemptDash && dashLimited)
+		{
+			if (dashCount <= 0)
+				return false;
+
+			dashCount--;
+			PlayState.instance.updateDashCount();
+		}
+		return attemptDash;
 	}
 
 	private function move(p_move_speed:Float)

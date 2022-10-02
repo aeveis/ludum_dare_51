@@ -2,6 +2,7 @@ package util.ui;
 
 import flixel.graphics.frames.FlxBitmapFont;
 import flixel.text.FlxBitmapText;
+import flixel.text.FlxText.FlxTextAlign;
 import flixel.util.FlxColor;
 import util.ui.UIContainer.UIPlacement;
 import util.ui.UIContainer.UISize;
@@ -48,6 +49,11 @@ class UIBitmapText extends UIContainer
 	{
 		size = UISize.Size(bitmapText.width * bitmapText.scale.x, (bitmapText.height - heightOffset) * bitmapText.scale.y);
 		refresh(true);
+	}
+
+	public function setBitmapAlignment(alignment:FlxTextAlign)
+	{
+		bitmapText.alignment = alignment;
 	}
 
 	public function setBitmapFont(?font:FlxBitmapFont)

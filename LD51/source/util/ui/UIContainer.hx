@@ -724,6 +724,8 @@ class UIContainer extends FlxGroup
 						flxObj.x = xoffset - flxObj.width / 2;
 						flxObj.y = yoffset - flxObj.height;
 						yoffset -= flxObj.height + padding.top + padding.bottom;
+					case UIPlacement.TopLeft:
+						xoffset += flxObj.width + padding.right + padding.left;
 					case UIPlacement.BottomLeft:
 						flxObj.y = yoffset - flxObj.height;
 						xoffset += flxObj.width + padding.right + padding.left;
@@ -803,6 +805,8 @@ class UIContainer extends FlxGroup
 							uiContain.x = xoffset - uiContain.width / 2;
 							uiContain.y = yoffset - uiContain.height;
 							yoffset -= uiContain.height + padding.top + padding.bottom;
+						case UIPlacement.TopLeft:
+							xoffset += uiContain.width + padding.right + padding.left;
 						case UIPlacement.BottomLeft:
 							uiContain.y = yoffset - uiContain.height;
 							xoffset += uiContain.width + padding.right + padding.left;

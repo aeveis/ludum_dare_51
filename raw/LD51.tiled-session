@@ -8,6 +8,10 @@
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
+        "": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
         "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare50/LD50/assets/data/level0.tmx": {
             "scale": 1.341875,
             "selectedLayer": 0,
@@ -35,12 +39,30 @@
             "scaleInDock": 1
         },
         "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/level0.tmx": {
-            "scale": 0.75,
-            "selectedLayer": 1,
+            "scale": 1.5,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 640,
-                "y": 196
+                "x": 524,
+                "y": 164.66666666666669
             }
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/level0.tmx#checkpoint": {
+            "scaleInDock": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/level0.tmx#player": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/level0.tmx#tiles": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/player.tsx": {
+            "scaleInDock": 1
+        },
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/tiles.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         }
     },
     "last.imagePath": "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/images",
@@ -50,8 +72,12 @@
     "openFiles": [
     ],
     "project": "LD51.tiled-project",
+    "property.type": "int",
     "recentFiles": [
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/level0.tmx",
+        "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/tiles.tsx"
     ],
+    "tileset.embedInMap": true,
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
         "height": 16,
