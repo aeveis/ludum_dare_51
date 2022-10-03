@@ -6,6 +6,7 @@ import flixel.FlxSprite;
 import flixel.group.FlxGroup;
 import flixel.system.FlxSound;
 import flixel.util.FlxColor;
+import flixel.util.FlxColorTransformUtil;
 import util.FSM;
 import util.MultiEmitter;
 import util.MultiSprite.SpriteProperty;
@@ -65,7 +66,7 @@ class DustEmitter extends MultiEmitter
 		maxVelX = 1.0;
 		minVelY = -1.0;
 		maxVelY = -1.0;
-
+		color = 0xdaf7b8;
 		if (FlxG.random.bool(15))
 		{
 			emitParticle(x, y);
@@ -82,6 +83,7 @@ class DustEmitter extends MultiEmitter
 		maxVelX = 1.0;
 		minVelY = -1.0;
 		maxVelY = -1.0;
+		color = 0xdaf7b8;
 
 		if (FlxG.random.bool(3))
 		{
@@ -99,6 +101,7 @@ class DustEmitter extends MultiEmitter
 		maxVelX = 10;
 		minVelY = -10;
 		maxVelY = -10;
+		color = 0xdaf7b8;
 
 		if (FlxG.random.bool(5))
 		{
@@ -117,6 +120,7 @@ class DustEmitter extends MultiEmitter
 		maxVelX = 3.0;
 		minVelY = -1.0;
 		maxVelY = 1.0;
+		color = 0xdaf7b8;
 		for (i in 0...2)
 		{
 			emitParticle(x, y);
@@ -129,6 +133,7 @@ class DustEmitter extends MultiEmitter
 		maxVelX = -0.5;
 		minVelY = -1.0;
 		maxVelY = 1.0;
+		color = 0xdaf7b8;
 		for (i in 0...2)
 		{
 			emitParticle(x, y);
@@ -141,6 +146,7 @@ class DustEmitter extends MultiEmitter
 		maxVelY = 3.0;
 		minVelX = -1.0;
 		maxVelX = 1.0;
+		color = 0xdaf7b8;
 		for (i in 0...2)
 		{
 			emitParticle(x, y);
@@ -153,30 +159,30 @@ class DustEmitter extends MultiEmitter
 		maxVelY = -0.5;
 		minVelX = -1.0;
 		maxVelX = 1.0;
+		color = 0xdaf7b8;
 		for (i in 0...2)
 		{
 			emitParticle(x, y);
 		}
 	}
 
-	public function dashPoof(angle:Float, dist:Float)
+	public function dashPoof()
 	{
-		minVelX = -10 * Math.cos(angle);
-		maxVelX = -30 * Math.cos(angle);
-		minVelY = -30;
-		maxVelY = -40 * Math.sin(angle);
-		for (i in 0...Math.floor(dist))
+		minVelX = -5;
+		maxVelX = 5;
+		minVelY = -5;
+		maxVelY = 5;
+		minLifespan = 0.2;
+		maxLifespan = 0.4;
+
+		if (FlxG.random.bool(45))
 		{
-			emitParticle(x + i * Math.cos(angle), y + i * Math.sin(angle));
+			color = FlxColor.interpolate(0x56ddd7, 0xdaf7b8, FlxG.random.float());
+			emitParticle(x, y - FlxG.random.float(0, 10));
 		}
-		minVelX = -10 * Math.cos(angle);
-		maxVelX = -50 * Math.cos(angle);
-		minVelY = -10 * Math.sin(angle);
-		maxVelY = -50 * Math.sin(angle);
-		for (i in 0...20)
-		{
-			emitParticle(x - i, y - FlxG.random.float(0, 10));
-		}
+
+		minLifespan = 0.5;
+		maxLifespan = 1;
 	}
 
 	public function dashEndPoof()
@@ -201,7 +207,8 @@ class DustEmitter extends MultiEmitter
 		maxVelX = 5;
 		minVelY = -5;
 		maxVelY = 5;
-		if (FlxG.random.bool(40))
+		color = 0xffa205;
+		if (FlxG.random.bool(20))
 		{
 			emitParticle(x + radius * Math.cos(pangle), y + radius * Math.sin(pangle));
 		}
@@ -274,14 +281,53 @@ class DustEmitter extends MultiEmitter
 
 	public function poof()
 	{
-		minVelX = -45;
-		maxVelX = 45;
+		minVelX = -25;
+		maxVelX = 25;
 		minVelY = -45;
-		maxVelY = 45;
+		maxVelY = 10;
+		color = 0x56ddd7;
+		minLifespan = 0.35;
+		maxLifespan = 0.5;
 		for (i in 0...10)
 		{
 			emitParticle(x, y);
 		}
+		minLifespan = 0.5;
+		maxLifespan = 1;
+	}
+
+	public function redPoof()
+	{
+		width = 32;
+		height = 32;
+		minVelX = -30;
+		maxVelX = 30;
+		minVelY = -65;
+		maxVelY = 10;
+		color = 0xf23e1f;
+		for (i in 0...20)
+		{
+			emitParticle(x, y);
+		}
+		width = 8;
+		height = 8;
+	}
+
+	public function greenPoof()
+	{
+		width = 32;
+		height = 32;
+		minVelX = -30;
+		maxVelX = 30;
+		minVelY = -65;
+		maxVelY = 10;
+		color = 0x59c316;
+		for (i in 0...20)
+		{
+			emitParticle(x, y);
+		}
+		width = 8;
+		height = 8;
 	}
 
 	public function largePoof()
@@ -354,13 +400,12 @@ class DustEmitter extends MultiEmitter
 		minVelX = -30;
 		maxVelX = 30;
 		minVelY = -30;
-		maxVelY = -30;
-
-		color = 0xfffacc;
+		maxVelY = 30;
 		isSmoke = false;
-		if (FlxG.random.bool(10))
+		for (i in 0...20)
 		{
-			emitParticle(x, y);
+			color = FlxColor.interpolate(0xb2987d, 0x594e48, FlxG.random.float());
+			emitParticle(x + FlxG.random.float(-12, 12), y + FlxG.random.float(-8, 8));
 		}
 
 		color = FlxColor.WHITE;
@@ -374,6 +419,7 @@ class DustEmitter extends MultiEmitter
 		{
 			sp.accelY = accelY;
 		}
+		sp.color = color;
 	}
 
 	override function spriteUpdate(sp:SpriteProperty, elapsed:Float)

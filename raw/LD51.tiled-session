@@ -77,7 +77,7 @@
     "openFiles": [
     ],
     "project": "LD51.tiled-project",
-    "property.type": "int",
+    "property.type": "string",
     "recentFiles": [
         ":/automap-tiles.tsx",
         "C:/Users/Dan Lin/Dropbox/prototypes/ludum_dare51/trunk/LD51/assets/data/level0.tmx",
@@ -87,6 +87,6 @@
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
         "height": 16,
-        "width": 24
+        "width": 16
     }
 }

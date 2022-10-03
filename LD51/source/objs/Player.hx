@@ -38,7 +38,7 @@ class Player extends FlxSprite
 	public var airBoost:Float = 50;
 	public var jumpStrength:Float = 120;
 	public var jumpVariable:Float = 5;
-	public var flapStrength:Float = 200;
+	public var flapStrength:Float = 250;
 	public var flapVariable:Float = 20;
 	public var gravity:Float = 400;
 	public var glideGravity:Float = 50;
@@ -71,6 +71,8 @@ class Player extends FlxSprite
 	public var followPoint:FlxPoint;
 	public var followOffset:Float = 3;
 
+	public var chirping:TimedBool;
+
 	public function new(px:Float, py:Float)
 	{
 		super(px, py + 4);
@@ -91,10 +93,11 @@ class Player extends FlxSprite
 
 		onGround = new TimedBool(0.15);
 		jumping = new TimedBool(0.2);
-		jumpCooldown = new TimedBool(0.3);
+		jumpCooldown = new TimedBool(0.2);
 		dashing = new TimedBool(normalDashTime);
 		dashCooldown = new TimedBool(0.2);
 		stunned = new TimedBool(0.25);
+		chirping = new TimedBool(0.15);
 		airDashDiagonalStrength = Math.sqrt(airDashStrength * airDashStrength / 2.0);
 
 		animation.add("idle", [0], 5, false);
@@ -137,10 +140,6 @@ class Player extends FlxSprite
 
 		this.elapsed = elapsed;
 
-		// DustEmitter.instance.x = x + width / 2;
-		// DustEmitter.instance.y = y + height / 2;
-		// DustEmitter.instance.constantPoof();
-
 		dashCooldown.update(elapsed);
 		dashing.update(elapsed);
 		if (!dashCooldown.soft)
@@ -151,6 +150,7 @@ class Player extends FlxSprite
 		jumping.update(elapsed);
 		jumpCooldown.update(elapsed);
 		stunned.update(elapsed);
+		chirping.update(elapsed);
 		fsm.update();
 		super.update(elapsed);
 
@@ -172,6 +172,20 @@ class Player extends FlxSprite
 					followPoint.y = y;
 				default:
 		}*/
+
+		if (Input.control.keys.get("action").justPressed)
+		{
+			G.playSound("birdtype", 2);
+			if (animation.frameIndex < 25)
+			{
+				animation.frameIndex += 25;
+			}
+			chirping.trigger();
+		}
+		else if (animation.frameIndex >= 25 && !chirping.soft)
+		{
+			animation.frameIndex -= 25;
+		}
 	}
 
 	private function idleEnter()
@@ -189,6 +203,7 @@ class Player extends FlxSprite
 		jumpCooldown.reset();
 		followOffset = 3;
 		animation.play("land");
+		FlxG.sound.play(AssetPaths.land__ogg);
 	}
 
 	private function crouchEnter()
@@ -225,6 +240,7 @@ class Player extends FlxSprite
 		followOffset = 2;
 		animation.play("jump");
 		jump(jumpStrength, jumpVariable);
+		FlxG.sound.play(AssetPaths.flap__ogg);
 	}
 
 	private function flapEnter()
@@ -233,6 +249,7 @@ class Player extends FlxSprite
 		followOffset = 2;
 		animation.play("flap");
 		jump(flapStrength, flapVariable);
+		FlxG.sound.play(AssetPaths.flap__ogg);
 	}
 
 	private function glideEnter()
@@ -254,6 +271,7 @@ class Player extends FlxSprite
 		followOffset = 3;
 		stunned.trigger();
 		animation.play("stun");
+		FlxG.sound.play(AssetPaths.stun__ogg);
 	}
 
 	private function airDashEnter()
@@ -265,6 +283,7 @@ class Player extends FlxSprite
 		angle = 0;
 		dashCooldown.trigger();
 		dashing.trigger();
+		FlxG.sound.play(AssetPaths.dash__ogg);
 
 		/*trace("delayed left: " + Input.control.left.justPressedDelayed + " right: " + Input.control.right.justPressedDelayed + " up: "
 				+ Input.control.up.justPressedDelayed + " down: " + Input.control.down.justPressedDelayed);
@@ -669,6 +688,20 @@ class Player extends FlxSprite
 			}
 			fsm.switchState(MoveState.Fall);
 		}
+		else
+		{
+			DustEmitter.instance.x = x + width / 2;
+			DustEmitter.instance.y = y + height / 2;
+			DustEmitter.instance.dashPoof();
+			if (!dashLimited)
+			{
+				DustEmitter.instance.dashPoof();
+			}
+			if (dashUntethered)
+			{
+				DustEmitter.instance.dashPoof();
+			}
+		}
 	}
 
 	private function stunUpdate()
@@ -709,6 +742,10 @@ class Player extends FlxSprite
 
 	private function move(p_move_speed:Float)
 	{
+		DustEmitter.instance.x = x + width / 2;
+		DustEmitter.instance.y = y + height / 2;
+		DustEmitter.instance.constantPoof();
+
 		if (onGround.soft)
 		{
 			if (Input.control.left.justPressedDelayed && velocity.x > -10)
@@ -744,14 +781,19 @@ class Player extends FlxSprite
 			}
 			jumping.trigger();
 			jumpCooldown.trigger();
+			DustEmitter.instance.x = x + width / 2;
+			DustEmitter.instance.y = y + height / 2;
 			if (Input.control.left.justPressedDelayed)
 			{
 				velocity.x -= airBoost;
+				DustEmitter.instance.leftPoof();
 			}
 			else if (Input.control.right.justPressedDelayed)
 			{
 				velocity.x += airBoost;
+				DustEmitter.instance.rightPoof();
 			}
+			DustEmitter.instance.downPoof();
 		}
 		else if (Input.control.up.pressed && jumping.soft)
 		{

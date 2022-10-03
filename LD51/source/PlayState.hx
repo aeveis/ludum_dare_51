@@ -21,6 +21,8 @@ import objs.Feather;
 import objs.Object;
 import objs.Platform;
 import objs.Player;
+import ui.TextBox;
+import ui.TextTrigger;
 import util.Input;
 import util.TiledLevel;
 import util.ui.UIBitmapText;
@@ -54,6 +56,10 @@ class PlayState extends FlxState
 	public var feathersMap:Map<Int, Array<Feather>>;
 	public var platforms:FlxTypedGroup<Platform>;
 	public var dustEmit:DustEmitter;
+	public var textTriggers:FlxGroup;
+	public var textbox:TextBox;
+	public var currentTextTrigger:TextTrigger;
+	public var objs:FlxGroup;
 
 	public var timer:Float = 0;
 	public var counting:Bool = false;
@@ -63,6 +69,12 @@ class PlayState extends FlxState
 	public var goldLevel:Int;
 	public var untetheredLevel:Int;
 	public var totalTime:Float = 0;
+	public var raceover:Bool = false;
+
+	public var frameCount:Int = 0;
+	public var overlapFrame:Int = 0;
+
+	public var title:FlxSprite;
 
 	override public function create()
 	{
@@ -81,6 +93,8 @@ class PlayState extends FlxState
 		feathersMap = new Map<Int, Array<Feather>>();
 		platforms = new FlxTypedGroup<Platform>();
 		dustEmit = new DustEmitter();
+		textTriggers = new FlxGroup();
+		objs = new FlxGroup();
 
 		ui = new UIContainer(UIPlacement.Top, UISize.XFill(20));
 		ui.scrollFactor.set(0, 0);
@@ -119,6 +133,14 @@ class PlayState extends FlxState
 		dashUI.add(controlText);
 		ui.add(dashUI);
 
+		textbox = new TextBox(AssetPaths.textbox__png, UIPlacement.Bottom, UISize.XFill(42), 1);
+		textbox.setPortrait(AssetPaths.profileIcon__png, true, 32, 32);
+		textbox.setPortraitBorderImage(AssetPaths.portrait_border__png, UILayout.sides(1));
+		textbox.addAnim("Normal", [0]);
+		textbox.addAnim("Parent", [1]);
+		textbox.addAnim("Crow", [2]);
+		textbox.playAnim("Normal");
+
 		level = new TiledLevel(AssetPaths.level0__tmx);
 		tilemap = level.loadTileMap("tiles");
 		for (i in 0...(level.gid + 1))
@@ -134,25 +156,34 @@ class PlayState extends FlxState
 
 		var bg = new FlxSprite(0, 0, AssetPaths.bg__png);
 		bg.scrollFactor.set(0.2, 0.2);
+		add(textTriggers);
 		add(bg);
 		add(tilemap);
 		add(platforms);
-		add(checkpoints);
-		add(feathers);
 		add(dustEmit);
+		add(checkpoints);
+		add(objs);
+		add(feathers);
 		add(player);
 		add(ui);
+		add(textbox);
+
+		title = new FlxSprite(FlxG.width / 2, FlxG.height / 2, AssetPaths.title__png);
+		title.x -= title.width / 2;
+		title.y -= title.height / 2;
+		title.scrollFactor.set(0, 0);
+		add(title);
 
 		/*followCam = new FlxObject();
 			followCam.x = player.x;
 			followCam.y = player.y; */
 		FlxG.camera.follow(player, FlxCameraFollowStyle.PLATFORMER);
 
-		// FlxG.sound.playMusic("unrest", 0);
+		FlxG.sound.playMusic("bitbybit", 0);
 
 		if (!G.startInput)
 		{
-			// FlxG.sound.music.pause();
+			FlxG.sound.music.pause();
 		}
 		G.level = -1;
 		G.score = 0;
@@ -210,23 +241,52 @@ class PlayState extends FlxState
 				feathers.add(feather);
 			case "platform":
 				platforms.add(new Platform(px, py));
-			default:
-				/*var obj:Object = new Object(px, py, pname);
-					obj.state = Object.NONE;
-					objs.add(obj);
+			case "text":
+				py += pobj.height;
 
-					var textArray:Array<String> = Reflect.getProperty(TextConstants, pname);
-					if (textArray == null)
-					{
-						return;
-					}
-					obj.textTrigger = addTextTrigger(px, py, pobj.width, pobj.height, pname, textArray);
-					obj.textTrigger.setActive(false); */
+				var type:String = pobj.properties.contains("type") ? pobj.properties.get("type") : "default";
+				var textArray:Array<String> = Reflect.getProperty(TextConstants, type);
+				addTextTrigger(px, py, pobj.width, pobj.height, type, textArray);
+			default:
+				var obj:Object = new Object(px, py + 1, pname);
+				obj.state = Object.BOUNCE;
+				objs.add(obj);
+
+				var type:String = pobj.properties.contains("type") ? pobj.properties.get("type") : "";
+				pname += type;
+
+				var textArray:Array<String> = Reflect.getProperty(TextConstants, pname);
+				if (textArray == null)
+				{
+					return;
+				}
+				obj.textTrigger = addTextTrigger(px, py, pobj.width, pobj.height, pname, textArray);
+				// obj.textTrigger.setActive(false);
 		}
+	}
+
+	public function addTextTrigger(px:Float, py:Float, pwidth:Float, pheight:Float, name:String, textArray:Array<String>):TextTrigger
+	{
+		var txt:TextTrigger = new TextTrigger(px, py, pwidth, pheight, name, textArray);
+		var animName:String;
+		switch (name)
+		{
+			case "parents":
+				animName = "Parent";
+			case "title":
+				animName = "Normal";
+			default:
+				animName = "Crow";
+		}
+		txt.animName = animName;
+		txt.setTypeSound("birdtype", 2);
+		textTriggers.add(txt);
+		return txt;
 	}
 
 	override public function update(elapsed:Float)
 	{
+		frameCount++;
 		Input.control.update(elapsed);
 		if (!fadeComplete)
 			return;
@@ -235,21 +295,17 @@ class PlayState extends FlxState
 			if (Input.control.any || Input.control.keys.get("select").pressed)
 			{
 				G.startInput = true;
-				// FlxG.sound.music.fadeIn(1, 0, 1);
+				FlxG.sound.music.fadeIn(1, 0, 0.5);
+				remove(title, true);
+				title.kill();
 				if (Input.control.keys.get("select").justPressed)
 				{
-					// G.playSound("confirm");
+					G.playSound("birdtype0");
 				}
 			}
-			/*if (!FlxG.overlap(textTriggers, player, checkText))
-				{
-					textbox.hasMoreText = false;
-					if (Input.control.keys.get("select").justPressed)
-					{
-						textbox.skipTyping();
-					}
-			}*/
-			// super.update(elapsed);
+			FlxG.collide(tilemap, player);
+			super.update(elapsed);
+			FlxG.overlap(textTriggers, player, checkText);
 
 			return;
 		}
@@ -260,7 +316,7 @@ class PlayState extends FlxState
 		FlxG.collide(tilemap, player);
 		FlxG.collide(platforms, player, checkPlatform);
 		onCheckpoint = FlxG.overlap(checkpoints, player, reachCheckpoint);
-		if (!onCheckpoint && raceStarted)
+		if (!onCheckpoint && raceStarted && !raceover)
 		{
 			counting = true;
 			checkpointText.text = "";
@@ -271,7 +327,17 @@ class PlayState extends FlxState
 
 		super.update(elapsed);
 
-		if (counting)
+		var onText:Bool = FlxG.overlap(textTriggers, player, checkText);
+		if (!onText)
+		{
+			textbox.hasMoreText = false;
+			if (textbox.visible)
+			{
+				textbox.close();
+			}
+		}
+
+		if (counting && !raceover)
 		{
 			timer += elapsed;
 			timerText.text = Math.floor(timer) + "." + Math.floor(timer * 10) % 10;
@@ -299,14 +365,7 @@ class PlayState extends FlxState
 		}
 		if (Input.control.keys.get("restart").justPressed)
 		{
-			if (G.level <= G.maxLevel)
-			{
-				setToLevel(G.level);
-			}
-			else
-			{
-				restart();
-			}
+			setToLevel(G.level);
 		}
 		if (Input.control.keys.get("restart").justPressed && FlxG.keys.pressed.SHIFT)
 		{
@@ -314,26 +373,118 @@ class PlayState extends FlxState
 		}
 	}
 
+	public function checkText(trigger:TextTrigger, player:FlxObject)
+	{
+		if (overlapFrame == frameCount)
+		{
+			return;
+		}
+		trigger.onTrigger = true;
+		switch (trigger.name)
+		{
+			case "crow2restart":
+				if (Input.control.keys.get("action").justPressed)
+				{
+					totalTime = 0;
+					raceover = false;
+					G.level = G.score = 0;
+					setToLevel(0, true);
+					timerText.setColor(0x56ddd7);
+					timerText.text = "0.0";
+					checkpointText.text = "Safe Zone";
+					checkpointText.setColor(0x59c316);
+					scoreText.text = G.score + "/" + G.maxScore;
+					scoreText.setSizeToText();
+					scoreUI.refreshChildren();
+					timerText.setSizeToText();
+					timerUI.refreshChildren();
+					var cp:Checkpoint = checkpointMap.get(0);
+					if (cp != null)
+						cp.switchState(Checkpoint.IDLE);
+					raceStarted = false;
+				}
+			default:
+		}
+
+		switch (trigger.state)
+		{
+			case TextTriggerState.Ready:
+				var textToPlay:String = "";
+				switch (trigger.name)
+				{
+					default:
+				}
+				textToPlay = trigger.getText();
+
+				textbox.visible = true;
+				textbox.playAnim(trigger.animName);
+
+				textbox.hasMoreText = true;
+				textbox.playText(textToPlay, trigger.typeSoundName, trigger.typeSoundRandomCount);
+
+				if (trigger.state == TextTriggerState.Done)
+				{
+					textbox.hasMoreText = false;
+				}
+				else
+				{
+					trigger.state = TextTriggerState.Playing;
+				}
+			case TextTriggerState.Playing:
+				if (Input.control.keys.get("select").justPressed)
+				{
+					if (textbox.isDoneTyping)
+					{
+						trigger.state = TextTriggerState.Ready;
+					}
+					else
+					{
+						textbox.skipTyping();
+					}
+				}
+			case TextTriggerState.Done:
+				if (Input.control.keys.get("select").justPressed)
+				{
+					if (textbox.isDoneTyping)
+					{
+						textbox.visible = false;
+						trigger.setCooldown();
+					}
+					else
+					{
+						textbox.skipTyping();
+					}
+				}
+			default:
+		}
+
+		overlapFrame = frameCount;
+	}
+
 	public function checkPlatform(pf:Platform, p:Player)
 	{
 		if (player.dashing.soft && player.dashUntethered)
 		{
 			pf.breakPlatform();
-			dustEmit.x = pf.x;
-			dustEmit.y = pf.y;
+			dustEmit.x = pf.x + pf.width / 2;
+			dustEmit.y = pf.y + pf.height / 2;
 			dustEmit.cloudPoof();
 		}
 	}
 
-	public function setToLevel(level:Int)
+	public function setToLevel(level:Int, dontMovePlayer:Bool = false)
 	{
 		var checkpoint:Checkpoint = checkpointMap.get(level);
 		if (checkpoint == null)
 			return;
 		// followCam.x = player.followPoint.x = player.x = checkpoint.x;
 		// followCam.y = player.followPoint.y = player.y = checkpoint.y - 1;
-		player.x = checkpoint.x;
-		player.y = checkpoint.y - 1;
+		if (!dontMovePlayer)
+		{
+			player.x = checkpoint.x;
+			player.y = checkpoint.y - 1;
+		}
+		raceover = (G.maxLevel == (level + 1));
 
 		player.dashCount = 0;
 		if (level > untetheredLevel)
@@ -382,23 +533,54 @@ class PlayState extends FlxState
 
 	public function reachCheckpoint(cp:Checkpoint, p:Player)
 	{
+		dustEmit.x = cp.x + cp.width / 4;
+		dustEmit.y = cp.y + cp.height / 4;
+		dustEmit.shieldEffect(16);
+		if (raceover)
+		{
+			if (checkpointText.text != "Race Over")
+			{
+				checkpointText.text = "Race Over";
+				checkpointText.setSizeToText();
+				timerText.setColor(0x56ddd7);
+				timerText.text = "Total: " + Math.floor(totalTime) + "." + Math.floor(totalTime * 10) % 10;
+				timerUI.refreshChildren();
+				counting = false;
+			}
+
+			var array:Array<Feather> = feathersMap.get(cp.level);
+			if (array == null)
+				return;
+
+			for (f in array)
+			{
+				f.reactivate();
+			}
+
+			return;
+		}
 		if (cp.state == Checkpoint.IDLE)
 		{
 			raceStarted = true;
 			if (timer >= 10.1)
 			{
 				cp.switchState(Checkpoint.FAIL);
+				dustEmit.redPoof();
+				FlxG.sound.play(AssetPaths.late__ogg);
 			}
 			else
 			{
+				dustEmit.greenPoof();
+				FlxG.sound.play(AssetPaths.ontime__ogg);
 				cp.switchState(Checkpoint.SUCCESS);
 				G.score++;
 				scoreText.text = G.score + "/" + G.maxScore;
 				scoreText.setSizeToText();
 				scoreUI.refreshChildren();
 				timerText.setColor(0x59c316);
-				totalTime += timer;
 			}
+			totalTime += timer;
+			raceover = (G.maxLevel == (cp.level + 1));
 			G.level = cp.level;
 			timer = 0;
 		}
@@ -416,10 +598,17 @@ class PlayState extends FlxState
 		if (f.state == Object.BOUNCE)
 		{
 			f.collect();
+			dustEmit.x = f.x + f.width / 2;
+			dustEmit.y = f.y + f.height / 2;
+			dustEmit.poof();
+			FlxG.sound.play(AssetPaths.collect__ogg);
 			switch (f.featherState)
 			{
 				case Feather.GOLD:
+					if (raceover)
+						return;
 					player.dashLimited = false;
+					player.dashUntethered = false;
 					featherIcon.setFeatherState(f.featherState);
 					dashText.text = "#";
 					dashText.setSizeToText();
@@ -432,6 +621,11 @@ class PlayState extends FlxState
 					dashText.setSizeToText();
 					dashUI.refreshChildren();
 				default:
+					if (raceover)
+						return;
+
+					player.dashLimited = true;
+					player.dashUntethered = false;
 					player.dashCount++;
 					updateDashCount();
 			}
@@ -493,7 +687,7 @@ class PlayState extends FlxState
 		fadeComplete = false;
 		if (FlxG.sound.music != null)
 		{
-			// FlxG.sound.music.fadeOut(.3);
+			FlxG.sound.music.fadeOut(.3);
 		}
 	}
 

@@ -35,6 +35,12 @@
 	<assets path="assets" exclude="*.mp3|*.it|*.wav|*.db|*.it|*.bak" if="html5"/>
 	<assets path="assets" exclude="*.mp3|*.it|*.wav|*.db|*.it|*.bak" if="neko"/>
 
+	<assets path="assets" unless="flash">
+		<sound path="sounds/birdtype0.ogg"					id="birdtype0" />
+		<sound path="sounds/birdtype1.ogg"					id="birdtype1" />
+		<sound path="sounds/birdtype2.ogg"					id="birdtype2" />
+		<sound path="music/bitbybit.ogg"					id="bitbybit" />
+	</assets>
 	<!-- _______________________________ Libraries ______________________________ -->
 
 	<haxelib name="flixel" />

@@ -62,7 +62,7 @@ class TextBox extends UIImage
 		text.setTyping();
 
 		xbutton = new UIBitmapText("[X]", 5);
-		xbutton.setColor(0xff7ce0db);
+		xbutton.setColor(0x56ddd7);
 
 		add(charBox);
 		add(textBox);
